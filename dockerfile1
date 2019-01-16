@@ -1,0 +1,125 @@
+# predixci-node6-ubuntu
+
+FROM openjdk:8
+MAINTAINER ## "##"
+
+RUN echo "deb http://packages.linuxmint.com debian import" >> /etc/apt/
+sources.list \
+  && gpg --keyserver pgp.mit.edu --recv-keys 3EE67F3D0FF405B2 \
+  && gpg --export 3EE67F3D0FF405B2 > 3EE67F3D0FF405B2.gpg \
+  && apt-key add ./3EE67F3D0FF405B2.gpg \
+  && rm ./3EE67F3D0FF405B2.gpg \
+  && curl -ksS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add -
+ \
+  && echo "deb http://dl.yarnpkg.com/debian/ stable main" | tee /etc/ap
+t/sources.list.d/yarn.list \
+
+  && apt-get update \
+  && apt-get -y upgrade \
+  && apt-get install -y yarn \
+  && apt-get install -y --no-install-recommends \
+    ssh \
+    wget \
+    git \
+    vim \
+    zip \
+    unzip \
+    curl \
+    xvfb \
+    firefox \
+    openssh-server \
+    build-essential \
+    sshpass \
+    iptables libapparmor1 libsystemd-journal0 libpango1.0-0 libxss1 fon
+ts-liberation libappindicator1 xdg-utils gconf-service libgconf-2-4 \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/* \
+ && mkdir /var/run/sshd \
+ && adduser --quiet jenkins \
+
+#Installs node6.10
+ && wget https://nodejs.org/download/release/v6.10.0/node-v6.10.0-linux
+-x64.tar.gz \
+ && tar -C /usr/local --strip-components 1 -xzf node-v6.10.0-linux-x64.
+tar.gz \
+ && rm -rf node-v6.10.0-linux-x64.tar.gz
+
+
+COPY ORG* . /usr/local/share/ca-certificates/
+RUN update-ca-certificates \
+ && wget -qO- https://raw.githubusercontent.com/creationix/nvm/v0.31.1/
+install.sh | /bin/bash \
+ && git config --global http.sslVerify false \
+ && update-ca-certificates \
+ && npm install -g gulp jspm bower grunt grunt-cli newman protractor up
+date web-component-tester\
+ && npm install scsslint --save \
+ && yarn config set strict-ssl false \
+ && wget http://dl.google.com/linux/direct/google-chrome-stable_current
+_amd64.deb -O google-chrome-stable_current_amd64.deb \
+ && dpkg -i google-chrome-stable_current_amd64.deb \
+
+#Installs CF-cli
+ && wget -qO- http://go-cli.s3-website-us-east-1.amazonaws.com/releases
+/v6.11.3/cf-linux-amd64.tgz \
+  | gunzip -c - \
+  | tar -xf - -C /usr/bin \
+#Installs Docker and updates the configuration
+ && wget -O docker.deb http://apt.dockerproject.org/repo/pool/main/d/do
+cker-engine/docker-engine_1.11.2-0~trusty_amd64.deb \
+   && dpkg -i docker.deb
+   
+   
+ARG npmrc
+COPY $npmrc /root/
+RUN if [ ! -z "${npmrc}" ]; then mv /root/$npmrc /root/.npmrc; fi
+CMD ["/usr/sbin/sshd", "-D"]
+EXPOSE 22
+
+ 
+ MYVAR="/var/cpanel/users/joebloggs:DNS9=domain.com" 
+
+NAME=${MYVAR%:*}  # retain the part before the colon
+NAME=${NAME##*/}  # retain the part after the last slash
+echo $NAME
+Doesn't depend on joebloggs being at a particular depth in the path.
+
+If you want to go a bit overboard using grep:
+
+echo MYVAR | grep -oE '/[^/]+:' | cut -c2- | rev | cut -c2- | rev
+Summary
+
+An overview of a few parameter expansion modes, for reference...
+
+${MYVAR#pattern}       # delete shortest match of pattern from the beginning
+${MYVAR##pattern}      # delete longest match of pattern from the beginning
+${MYVAR%pattern}       # delete shortest match of pattern from the end
+${MYVAR%%pattern}      # delete longest match of pattern from the end
+So # means match from the beginning (think of a comment line) and % means from the end. One instance means shortest and two instances means longest.
+
+You can also replace particular strings or patterns using:
+
+${MYVAR/search/replace}
+The pattern is in the same format as file-name matching, so * (any characters) is common, often followed by a particular symbol like / or .
+
+Examples:
+
+Given a variable like
+
+MYVAR="users/joebloggs/domain.com" 
+Remove the path leaving file name (all characters up to a slash):
+
+echo ${MYVAR##*/}
+domain.com
+Remove the file name, leaving the path (delete shortest match after last /):
+
+echo ${MYVAR%/*}
+users/joebloggs
+Get just the file extension (remove all before last period):
+
+echo ${MYVAR##*.}
+com
+NOTE: To do two operations, you can't combine them, but have to assign to an intermediate variable. So to get the file name without path or extension:
+
+NAME=${MYVAR##*/}      # remove part before last slash
+echo ${NAME%.*}        # from the new var remove the part after the last period
